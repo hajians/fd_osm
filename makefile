@@ -21,7 +21,6 @@ FCFLAGS += -llapack
 #FCFLAGS += -pg 
 #FCFLAGS += -lblas
 
-
 # List of executables
 PROGRAMS = scratch main
 

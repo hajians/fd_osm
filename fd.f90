@@ -18,11 +18,11 @@ contains
     type(spmat),  intent(inout) :: Asp
 
     integer :: n_dof            ! total number of dofs
-    real    :: hx               ! hx is the mesh size in x direction
-    real    :: hy               ! hy is the mesh size in y direction
+    double precision    :: hx               ! hx is the mesh size in x direction
+    double precision    :: hy               ! hy is the mesh size in y direction
 
     ! in order to save time we compute -1/hx^2, +2/hx^2, -1/hy^2, +2/hy^2
-    real    :: mHX, p2HX, mHY, p2HY
+    double precision    :: mHX, p2HX, mHY, p2HY
 
     integer :: vert             ! vertex index
     integer :: adjVert          ! adjacent vertex index
@@ -95,7 +95,7 @@ contains
     do i=1, N_subd
        call buildspmat(res(i), geo_dd%subdm(i)%n_index, Th%n_vt, geo_dd%subdm(i)%n_index)
        do j=1, geo_dd%subdm(i)%n_index
-          call insert2spmat(res(i), j, geo_dd%subdm(i)%index(j), 1.0)
+          call insert2spmat(res(i), j, geo_dd%subdm(i)%index(j), dble(1.0))
        end do
        call deleteblankspmat(res(i))
     end do
@@ -105,7 +105,7 @@ contains
        call buildspmat(resGAM(i), geo_dd%interf(i)%n_index, Th%n_vt, &
             geo_dd%interf(i)%n_index )
        do j=1, geo_dd%interf(i)%n_index
-          call insert2spmat(resGAM(i), j, geo_dd%interf(i)%index(j), 1.0)
+          call insert2spmat(resGAM(i), j, geo_dd%interf(i)%index(j), dble(1.0))
        enddo
        call deleteblankspmat(resGAM(i))       
     end do
@@ -132,10 +132,10 @@ contains
 
     integer :: i, j
 
-    real    :: hx, hy
-    real    :: mHX, p2HX, mHY, p2HY
+    double precision    :: hx, hy
+    double precision    :: mHX, p2HX, mHY, p2HY
 
-    real :: Eta
+    double precision :: Eta
 
     if ( (geo_dd%init.eqv..false.) .or. &
          allocated(Asub) .or. allocated(Aintf) .or. allocated(Asub2intf)  ) then

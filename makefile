@@ -12,6 +12,7 @@ FCFLAGS += -fstack-check
 FCFLAGS += -fimplicit-none # checks the implicit-none
 ## double precision computation
 FCFLAGS	+= -fdefault-real-8
+FCFLAGS	+= -fdefault-double-8
 ## OpenMP for parallel computing
 FCFLAGS += -fopenmp 
 #
@@ -22,7 +23,7 @@ FCFLAGS += -llapack
 
 
 # List of executables
-PROGRAMS = scratch
+PROGRAMS = scratch main
 
 all: $(PROGRAMS)
 

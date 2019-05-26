@@ -21,7 +21,7 @@ program main
   integer :: i, j
 
   x1 = -1.0; x2 = 1.0; y1 = 1.0; y2 = 3.0
-  nx = 20*16;   ny = 20*16
+  nx = 20*1;   ny = 20*1
   N_subd = 2
 
   call buildmesh2d(x1,x2,y1,y2,nx,ny,Th)
@@ -33,26 +33,21 @@ program main
   call build_res_opt(Th,ddgeo,res,resGAM)
   call build_loc_opt(Th,ddgeo,Asub,Asub2intf,Aintf)
 
-  ! allocate( vecX( Asp%N_j ) )
-  ! vecX = 1.0d0
-  ! vecX = Asp * VecX
-  ! call showvec( vecX )
-  ! stop
-  
+  write (*,*) 'saving matrices in scilab/data/ folder'
   ! write matrices for vertification
-  call writespmat('scilab/A1',Asub(1))
-  call writespmat('scilab/A1GAM',Asub2intf(1,1))
-  call writespmat('scilab/AGAM',Aintf(1))
+  call writespmat('scilab/data/A1',Asub(1))
+  call writespmat('scilab/data/A1GAM',Asub2intf(1,1))
+  call writespmat('scilab/data/AGAM',Aintf(1))
 
-  call writespmat('scilab/A2',Asub(2))
-  call writespmat('scilab/A2GAM',Asub2intf(2,1))
+  call writespmat('scilab/data/A2',Asub(2))
+  call writespmat('scilab/data/A2GAM',Asub2intf(2,1))
   stop
   ! write matrices for vertification
-  call writespmat('scilab/A2',Asub(2))
-  call writespmat('scilab/A2GAM1',Asub2intf(2,1))
-  call writespmat('scilab/A2GAM2',Asub2intf(2,2))
-  call writespmat('scilab/AGAM1',Aintf(1))
-  call writespmat('scilab/AGAM2',Aintf(2))
+  call writespmat('scilab/data/A2',Asub(2))
+  call writespmat('scilab/data/A2GAM1',Asub2intf(2,1))
+  call writespmat('scilab/data/A2GAM2',Asub2intf(2,2))
+  call writespmat('scilab/data/AGAM1',Aintf(1))
+  call writespmat('scilab/data/AGAM2',Aintf(2))
 contains
 
   !! -------------------------------

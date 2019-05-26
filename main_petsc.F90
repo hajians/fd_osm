@@ -1,4 +1,4 @@
-program test
+program main_petsc
 
   use fd
 
@@ -9,7 +9,7 @@ program test
 #include <finclude/petscvec.h>
 #include <finclude/petscvec.h90>
 #include <finclude/petscmat.h>
-
+#include <finclude/petscksp.h>
   !!  use petsc
   !!  use mpi
 
@@ -29,7 +29,7 @@ program test
   type(sp_csr) :: Bsp
   type(sp_csr) :: BspD, BspAug
   
-  double precision :: x1, x2, y1, y2
+  real :: x1, x2, y1, y2
   integer :: nx, ny
   integer :: N_subd
   integer :: i, j
@@ -55,7 +55,7 @@ program test
   PetscErrorCode, parameter :: PETSC_OK = 0
 
   x1 = -1.0d0; x2 = 1.0d0; y1 = 1.0d0; y2 = 3.0d0
-  nx = 80;   ny = 80;
+  nx = 10;   ny = 10;
   N_subd = 2
 
   call buildmesh2d(x1,x2,y1,y2,nx,ny,Th)
@@ -64,7 +64,7 @@ program test
   call plotinterface('interface',Th,ddgeo)
 
   hdiam = sqrt(Th%hx**2 + Th%hy**2)
-  qexpo = 0.0d0
+  qexpo = 0.5d0
   gamma = 0.5d0 * (1.0d0 + hdiam**qexpo )
   !gamma = 0.5d0 * (1 + ((1.0d0/N_subd)*hdiam)**qexpo ) ! eta = 0
   !gamma = 0.5d0 * (1 + (hdiam/(1.0d0/N_subd))**qexpo ) ! eta = 1/h^2
@@ -84,7 +84,7 @@ program test
   call writespmat('scilab/A2GAM',Asub2intf(2,1))
   !
   call writespmat('scilab/AGAM',Aintf(1))
-  stop
+  !stop
   !! end writing matrices
   
   !  call showspmat(Asp)
@@ -145,11 +145,12 @@ program test
      call KSPGetPC(SubSolver(i), SubPC, ierr)
      call PCSetType(SubPC, PCLU, ierr)
      ! call PCSetType(SubPC, PCICC, ierr)
-     ! call PCSetType(SubPC, PCCHOLESKY, ierr)
+     !call PCSetType(SubPC, PCCHOLESKY, ierr)
   enddo
 
   ! end sub precond
   !
+     
   call KSPSetFromOptions(Solver, ierr)
 
   call KSPSolve(Solver, rhs, sol,ierr)
@@ -214,17 +215,6 @@ contains
     write(*,"(/)")
   end subroutine ShowVec
 
-end program test
+end program main_petsc
 
-  ! call VecCreate(PETSC_COMM_WORLD,sol,ierr)
 
-  ! n = 10
-  ! one = 1.0/3.0
-
-  ! call VecSetSizes(sol,PETSC_DECIDE,n,ierr)
-  ! call VecSetFromOptions(sol,ierr)
-  ! call VecSet(sol,one,ierr) 
-  
-  ! call VecView(sol,PETSC_VIEWER_STDOUT_WORLD)
-
-  ! call VecDestroy(sol,ierr)

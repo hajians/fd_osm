@@ -39,8 +39,8 @@ include ${PETSC_DIR}/conf/rules
 spmat.o: 
 fd.o: geo2d.o spmat.o
 main_petsc.o: fd.o
-main: ${OBJ} fd.o geo2d.o spmat.o
-	-${FLINKER} -o test $^ ${PETSC_SYS_LIB}	
+main_petsc: ${OBJ} fd.o geo2d.o spmat.o
+	-${FLINKER} -o main_petsc $^ ${PETSC_SYS_LIB}	
 
 
 #

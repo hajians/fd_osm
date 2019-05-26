@@ -69,7 +69,7 @@ module geo2d
 
      !> global vertex index to interface map. If a vertex is not on the
      !! interface we assign 0.
-     integer*2, allocatable, dimension(:)    :: v2intf
+     integer, allocatable, dimension(:)    :: v2intf
 
      !> global vertex index to subdomain and local map.
      !! If a vertex does not belong to a subdomain, we assign 0.

@@ -28,7 +28,7 @@ ifeq ($(PETSC),1)
 	CFLAGS = -I${PETSC_DIR}/include	
 	FFLAGS = -I${PETSC_DIR}/include/finclude
 	SOURCESC =
-	SOURCESF = test.F90
+	SOURCESF = main_petsc.F90
 	OBJ = $(SOURCESF:.F90=.o)
 	CLEANFILES = ${OBJ} 
 
@@ -37,8 +37,8 @@ include ${PETSC_DIR}/conf/rules
 
 spmat.o: 
 fd.o: geo2d.o spmat.o
-test.o: fd.o
-test: ${OBJ} fd.o geo2d.o spmat.o
+main_petsc.o: fd.o
+main: ${OBJ} fd.o geo2d.o spmat.o
 	-${FLINKER} -o test $^ ${PETSC_SYS_LIB}	
 
 
@@ -46,7 +46,7 @@ test: ${OBJ} fd.o geo2d.o spmat.o
 
 else
 # List of executables
-PROGRAMS = scratch
+PROGRAMS = main
 
 all: $(PROGRAMS)
 
@@ -54,8 +54,8 @@ all: $(PROGRAMS)
 geo2d.o: 
 spmat.o:
 fd.o: geo2d.o spmat.o
-scratch.o: fd.o
-scratch: fd.o geo2d.o spmat.o
+main.o: fd.o
+main: fd.o geo2d.o spmat.o
 
 # Building the PROGRAMS; I don't know for what '$@' stands.
 # '$^' name of all prerequists 

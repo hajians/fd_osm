@@ -7,6 +7,37 @@ module fd
 
   implicit none
 
+  !> OSMopt contains operators to build the augmented matrix
+  !! associated to OSM on a STRIP.
+  type OSMopt
+     
+     !! number of subdomain
+     integer :: N_subd
+     
+     !! total number of primal unknowns
+     integer :: primal_tot_dofs
+
+     !! total number of interface unknowns
+     integer :: interf_tot_dofs
+     
+     !! total number of unknowns
+     integer :: tot_dofs
+
+     !! total number of unknowns per subdomain
+     integer, allocatable :: subd_tot_dof(:)
+     
+     !! subdomain primal unknowns to global dofs
+     type(vertex), allocatable :: subd_primal2Gdof(:)
+
+     !! subdomain interface unknowns to global dofs.
+     !! Except first and last subdomain, other subdomains
+     !! have two interfaces.
+     type(vertex), allocatable :: subd_interf2Gdof(:,:)
+
+     !! all subdomain global dofs to mesh vertices
+     integer, allocatable :: Gdof2vert(:)
+  end type OSMopt
+  
 contains
 
   !> fd_stiffness builds stiffness matrix
@@ -18,12 +49,15 @@ contains
     type(spmat),  intent(inout) :: Asp
 
     integer :: n_dof            ! total number of dofs
+
     double precision    :: hx               ! hx is the mesh size in x direction
     double precision    :: hy               ! hy is the mesh size in y direction
 
     ! in order to save time we compute -1/hx^2, +2/hx^2, -1/hy^2, +2/hy^2
     double precision    :: mHX, p2HX, mHY, p2HY
 
+
+    
     integer :: vert             ! vertex index
     integer :: adjVert          ! adjacent vertex index
 
@@ -41,6 +75,8 @@ contains
     mHX  = -1.0 / hx**2 ; mHY  = -1.0 / hy**2
     p2HX = +2.0 / hx**2 ; p2HY = +2.0 / hy**2
 
+
+    
     call buildspmat(Asp,n_dof,n_dof, 5*n_dof) ! # non-zero entries ~ 5*n_dof
 
     do vert=1, Th%n_vt
@@ -95,7 +131,7 @@ contains
     do i=1, N_subd
        call buildspmat(res(i), geo_dd%subdm(i)%n_index, Th%n_vt, geo_dd%subdm(i)%n_index)
        do j=1, geo_dd%subdm(i)%n_index
-          call insert2spmat(res(i), j, geo_dd%subdm(i)%index(j), dble(1.0))
+          call insert2spmat(res(i), j, geo_dd%subdm(i)%index(j), 1.0d0)
        end do
        call deleteblankspmat(res(i))
     end do
@@ -105,7 +141,7 @@ contains
        call buildspmat(resGAM(i), geo_dd%interf(i)%n_index, Th%n_vt, &
             geo_dd%interf(i)%n_index )
        do j=1, geo_dd%interf(i)%n_index
-          call insert2spmat(resGAM(i), j, geo_dd%interf(i)%index(j), dble(1.0))
+          call insert2spmat(resGAM(i), j, geo_dd%interf(i)%index(j), 1.0d0)
        enddo
        call deleteblankspmat(resGAM(i))       
     end do
@@ -134,9 +170,8 @@ contains
 
     double precision    :: hx, hy
     double precision    :: mHX, p2HX, mHY, p2HY
-
-    double precision :: Eta
-
+    double precision    :: Eta
+    
     if ( (geo_dd%init.eqv..false.) .or. &
          allocated(Asub) .or. allocated(Aintf) .or. allocated(Asub2intf)  ) then
        write(6,*) "error in build_loc_opt"
@@ -155,9 +190,9 @@ contains
 
     mHX  = -1.0 / hx**2 ; mHY  = -1.0 / hy**2
     p2HX = +2.0 / hx**2 ; p2HY = +2.0 / hy**2
-
-    Eta = 1.0/ sqrt(hx**2 + hy**2)
-
+    !Eta = 1.0 / sqrt(hx**2 + hy**2)
+    Eta = 0.0
+    
     !! start building the local solves
     do subd=1, N_subd
        sub_dof = geo_dd%subdm(subd)%n_index
@@ -241,6 +276,231 @@ contains
        call deleteblankspmat(Aintf(intf))
     enddo
 
-
   end subroutine build_loc_opt
+
+  !> build osm_opt from geo_dd structure for a domain decomposition
+  !! in a strip.
+  subroutine build_osm(geo_dd,osm_opt)
+    type(dd1d),   intent(in)         :: geo_dd
+    type(OSMopt), intent(inout)      :: osm_opt
+
+    integer :: i, j, k
+    integer :: dummy
+    integer :: tot_dofs
+
+    tot_dofs = 0
+    !
+    do i=1, geo_dd%n_subd
+       tot_dofs = tot_dofs + geo_dd%subdm(i)%n_index
+    enddo
+
+    osm_opt%primal_tot_dofs = tot_dofs
+
+    tot_dofs = 0
+    !
+    do i=1, geo_dd%n_intf
+       tot_dofs = tot_dofs + geo_dd%interf(i)%n_index
+    enddo
+    
+    osm_opt%interf_tot_dofs = 2 * tot_dofs
+
+    osm_opt%tot_dofs = osm_opt%interf_tot_dofs + osm_opt%primal_tot_dofs
+
+    osm_opt%N_subd = geo_dd%n_subd
+    
+    allocate( osm_opt%subd_primal2Gdof( geo_dd%n_subd ) )
+    allocate( osm_opt%subd_interf2Gdof( geo_dd%n_subd, 2 ) ) ! two
+                                                             ! interface
+                                                             ! per
+                                                             ! subdomain.
+    allocate( osm_opt%Gdof2vert( osm_opt%tot_dofs ) )
+    osm_opt%Gdof2vert = 0
+
+    allocate( osm_opt%subd_tot_dof( geo_dd%n_subd ) )
+
+
+    
+
+    !! filling gdofs
+    dummy = 0
+    i = 1                       ! subdomain one
+    !
+    osm_opt%subd_primal2Gdof(i)%n_index = geo_dd%subdm(i)%n_index
+    allocate( osm_opt%subd_primal2Gdof(i)%index( geo_dd%subdm(i)%n_index ) )
+    osm_opt%subd_primal2Gdof(i)%index = &
+         (/ (k, k=1, geo_dd%subdm(i)%n_index) /)  + dummy
+    dummy = osm_opt%subd_primal2Gdof(i)%index( geo_dd%subdm(i)%n_index )
+    osm_opt%Gdof2vert( osm_opt%subd_primal2Gdof(i)%index ) = &
+         geo_dd%subdm(i)%index
+    !
+    j = 2
+    osm_opt%subd_interf2Gdof(i,j)%n_index = &
+         geo_dd%interf(i-1+j-1)%n_index
+    allocate( osm_opt%subd_interf2Gdof(i,j)%index( &
+         geo_dd%interf(i-1+j-1)%n_index ) )
+    osm_opt%subd_interf2Gdof(i,j)%index = &
+         (/ (k, k=1, geo_dd%interf(i-1+j-1)%n_index) /) + dummy
+    dummy = osm_opt%subd_interf2Gdof(i,j)%index( geo_dd%interf(i-1+j-1)%n_index )
+    !
+    osm_opt%Gdof2vert( osm_opt%subd_interf2Gdof(i,j)%index ) = &
+         geo_dd%interf(i-1+j-1)%index    
+    !
+    ! other subdomains
+    do i=2, (geo_dd%n_subd-1)
+       osm_opt%subd_primal2Gdof(i)%n_index = geo_dd%subdm(i)%n_index
+       allocate( osm_opt%subd_primal2Gdof(i)%index( geo_dd%subdm(i)%n_index ) )
+       osm_opt%subd_primal2Gdof(i)%index = &
+            (/ (k, k=1, geo_dd%subdm(i)%n_index) /)  + dummy
+       dummy = osm_opt%subd_primal2Gdof(i)%index( geo_dd%subdm(i)%n_index )
+       !
+       osm_opt%Gdof2vert( osm_opt%subd_primal2Gdof(i)%index ) = &
+            geo_dd%subdm(i)%index
+       !
+       do j=1, 2                ! two faces
+          osm_opt%subd_interf2Gdof(i,j)%n_index = &
+               geo_dd%interf(i-1+j-1)%n_index
+          !
+          allocate( osm_opt%subd_interf2Gdof(i,j)%index( &
+               geo_dd%interf(i-1+j-1)%n_index ) )
+          !
+          osm_opt%subd_interf2Gdof(i,j)%index = &
+          (/ (k, k=1, geo_dd%interf(i-1+j-1)%n_index) /) + dummy
+          dummy = osm_opt%subd_interf2Gdof(i,j)%index( geo_dd%interf(i-1+j-1)%n_index )
+          !
+          osm_opt%Gdof2vert( osm_opt%subd_interf2Gdof(i,j)%index ) = &
+               geo_dd%interf(i-1+j-1)%index    
+       enddo
+    enddo
+    ! last subdomain
+    i = geo_dd%n_subd                       ! subdomain one
+    !
+    osm_opt%subd_primal2Gdof(i)%n_index = geo_dd%subdm(i)%n_index
+    allocate( osm_opt%subd_primal2Gdof(i)%index( geo_dd%subdm(i)%n_index ) )
+    osm_opt%subd_primal2Gdof(i)%index = &
+         (/ (k, k=1, geo_dd%subdm(i)%n_index) /)  + dummy
+    dummy = osm_opt%subd_primal2Gdof(i)%index( geo_dd%subdm(i)%n_index )
+    osm_opt%Gdof2vert( osm_opt%subd_primal2Gdof(i)%index ) = &
+         geo_dd%subdm(i)%index
+    !
+    j = 1
+    osm_opt%subd_interf2Gdof(i,j)%n_index = &
+         geo_dd%interf(i-1+j-1)%n_index
+    allocate( osm_opt%subd_interf2Gdof(i,j)%index( &
+         geo_dd%interf(i-1+j-1)%n_index ) )
+    osm_opt%subd_interf2Gdof(i,j)%index = &
+         (/ (k, k=1, geo_dd%interf(i-1+j-1)%n_index) /) + dummy
+    dummy = osm_opt%subd_interf2Gdof(i,j)%index( geo_dd%interf(i-1+j-1)%n_index )
+    !
+    osm_opt%Gdof2vert( osm_opt%subd_interf2Gdof(i,j)%index ) = &
+         geo_dd%interf(i-1+j-1)%index    
+
+    do i=1, geo_dd%n_subd
+       osm_opt%subd_tot_dof(i) = osm_opt%subd_primal2Gdof(i)%n_index
+       if (i>1) then
+          osm_opt%subd_tot_dof(i) = osm_opt%subd_tot_dof(i) + &
+               osm_opt%subd_interf2Gdof(i,1)%n_index
+       endif
+       if (i < geo_dd%n_subd) then
+          osm_opt%subd_tot_dof(i) = osm_opt%subd_tot_dof(i) + &
+               osm_opt%subd_interf2Gdof(i,2)%n_index
+       endif
+    enddo
+
+  end subroutine build_osm
+
+  !> using osm_opt and block matrices Asub, Asub2intf, Aintf builds
+  !! augmented matrix Aaug
+  subroutine build_augmatrix(osm_opt, Asub, Asub2intf, Aintf, gamma, AaugD, AaugOff)
+    type(OSMopt), intent(in)    :: osm_opt
+    type(spmat),  intent(in)    :: Asub(:)
+    type(spmat),  intent(in)    :: Asub2intf(:,:)
+    type(spmat),  intent(in)    :: Aintf(:)
+    type(spmat),  intent(inout) :: AaugD, AaugOff
+
+    double precision, intent(in) :: gamma
+    
+    integer :: i
+
+    if ( (AaugD%init.eqv..true.) .or. (AaugOff%init.eqv..true.) ) then
+       write(6,*) "error in build_augmatrix: "
+       stop
+    endif
+
+    call buildspmat(AaugD, osm_opt%tot_dofs, osm_opt%tot_dofs, 5*osm_opt%tot_dofs)
+    call buildspmat(AaugOff, osm_opt%tot_dofs, osm_opt%tot_dofs, 5*osm_opt%tot_dofs)
+
+    !! fill the SUBDOMAIN diagonals
+    do i=1, osm_opt%N_subd
+       call insertblock2spmat(AaugD, &
+            osm_opt%subd_primal2Gdof(i)%index(1), osm_opt%subd_primal2Gdof(i)%index(1), &
+            Asub(i) )
+       !
+       if (i > 1) then
+          !! here we should define $gamma$
+          call insertblock2spmat(AaugD, &
+               osm_opt%subd_interf2Gdof(i,1)%index(1), &
+               osm_opt%subd_interf2Gdof(i,1)%index(1), &
+               gamma * Aintf(i-1) )     ! 1 stands for left
+          !! sub2interf
+          call insertblock2spmat(AaugD, &
+               osm_opt%subd_primal2Gdof(i)%index(1), &
+               osm_opt%subd_interf2Gdof(i,1)%index(1), &
+               Asub2intf(i,i-1) ) ! 1 stands for left
+          call insertblock2spmat(AaugD, &
+               osm_opt%subd_interf2Gdof(i,1)%index(1), &
+               osm_opt%subd_primal2Gdof(i)%index(1), &
+               SPtranspose(Asub2intf(i,i-1)) ) ! 1 stands for left
+       endif
+       !! here we should define $gamma$
+       if (i < osm_opt%N_subd) then
+          call insertblock2spmat(AaugD, &
+               osm_opt%subd_interf2Gdof(i,2)%index(1), &
+               osm_opt%subd_interf2Gdof(i,2)%index(1), &
+               gamma * Aintf(i) )     ! 2 stands for right
+          call insertblock2spmat(AaugD, &
+               osm_opt%subd_primal2Gdof(i)%index(1), &
+               osm_opt%subd_interf2Gdof(i,2)%index(1), &
+               Asub2intf(i,i) ) ! 2 stands for right
+          call insertblock2spmat(AaugD, &
+               osm_opt%subd_interf2Gdof(i,2)%index(1), &
+               osm_opt%subd_primal2Gdof(i)%index(1), &
+               SPtranspose(Asub2intf(i,i)) ) ! 2 stands for right
+
+       endif
+    enddo
+
+    !! filling the SUBDOMAIN-to-SUBDOMAIN connectivity
+    do i=1, osm_opt%N_subd
+       if (i > 1 ) then
+          call insertblock2spmat(AaugOff, &
+               osm_opt%subd_interf2Gdof(i,1)%index(1), &
+               osm_opt%subd_interf2Gdof(i-1,2)%index(1), &
+               (1.0d0 - gamma) * Aintf(i-1) )     ! 1 stands for left
+          call insertblock2spmat(AaugOff, &
+               osm_opt%subd_interf2Gdof(i,1)%index(1), &
+               osm_opt%subd_primal2Gdof(i-1)%index(1), &
+               SPtranspose(Asub2intf(i-1,i-1)) ) ! 1 stands for left
+       endif
+
+       if (i < osm_opt%N_subd) then
+          !
+          call insertblock2spmat(AaugOff, &
+               osm_opt%subd_interf2Gdof(i,2)%index(1), &
+               osm_opt%subd_interf2Gdof(i+1,1)%index(1), &
+               (1.0d0 - gamma) * Aintf(i) )     ! 2 stands for right
+          call insertblock2spmat(AaugOff, &
+               osm_opt%subd_interf2Gdof(i,2)%index(1), &
+               osm_opt%subd_primal2Gdof(i+1)%index(1), &
+               SPtranspose(Asub2intf(i+1,i)) ) ! 2 stands for right
+          !
+       endif
+       
+    enddo
+
+  call deleteblankspmat(AaugD)
+  call deleteblankspmat(AaugOff)
+  !! 
+  end subroutine build_augmatrix
+
+  
 end module fd

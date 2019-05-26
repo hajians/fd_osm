@@ -24,6 +24,8 @@ program main
   nx = 20*1;   ny = 20*1
   N_subd = 2
 
+  write(*,*) "nx: ", nx, " ny: ", ny
+  
   call buildmesh2d(x1,x2,y1,y2,nx,ny,Th)
   call strip_dd(N_subd,Th,ddgeo)
   call plotmesh2d('box',Th)

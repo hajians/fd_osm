@@ -12,6 +12,7 @@ FCFLAGS += -fstack-check
 FCFLAGS += -fimplicit-none # checks the implicit-none
 ## double precision computation
 FCFLAGS	+= -fdefault-real-8
+FCFLAGS	+= -fdefault-double-8
 ## OpenMP for parallel computing
 FCFLAGS += -fopenmp 
 #
@@ -20,7 +21,7 @@ FCFLAGS += -llapack
 #FCFLAGS += -pg 
 #FCFLAGS += -lblas
 
-PETSC_DIR = /home/soheil/Downloads/petsc-3.5.0
+PETSC_DIR = /opt/petsc-3.5.0
 
 # check if we use PETSC or not
 # $(PETSC) is a given argument in the terminal

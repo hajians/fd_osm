@@ -11,14 +11,14 @@ program main
   type(spmat)  :: Asp
   type(spmat), allocatable  :: res(:), resGAM(:)
   type(spmat), allocatable  :: Asub(:), Asub2intf(:,:), Aintf(:)
-  type(spmat) :: Csp, Dsp
+  ! type(spmat) :: Csp, Dsp
 
-  double precision, allocatable :: vecX(:)
+  ! double precision, allocatable :: vecX(:)
   
   real :: x1, x2, y1, y2
   integer :: nx, ny
   integer :: N_subd
-  integer :: i, j
+  ! integer :: i, j
 
   x1 = -1.0; x2 = 1.0; y1 = 1.0; y2 = 3.0
   nx = 20*1;   ny = 20*1

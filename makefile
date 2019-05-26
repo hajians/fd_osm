@@ -12,7 +12,6 @@ FCFLAGS += -fstack-check
 FCFLAGS += -fimplicit-none # checks the implicit-none
 ## double precision computation
 FCFLAGS	+= -fdefault-real-8
-FCFLAGS	+= -fdefault-double-8
 ## OpenMP for parallel computing
 FCFLAGS += -fopenmp 
 #
@@ -21,9 +20,33 @@ FCFLAGS += -llapack
 #FCFLAGS += -pg 
 #FCFLAGS += -lblas
 
+PETSC_DIR = /home/soheil/Downloads/petsc-3.5.0
 
+# check if we use PETSC or not
+# $(PETSC) is a given argument in the terminal
+ifeq ($(PETSC),1)
+	CFLAGS = -I${PETSC_DIR}/include	
+	FFLAGS = -I${PETSC_DIR}/include/finclude
+	SOURCESC =
+	SOURCESF = test.F90
+	OBJ = $(SOURCESF:.F90=.o)
+	CLEANFILES = ${OBJ} 
+
+include ${PETSC_DIR}/conf/variables
+include ${PETSC_DIR}/conf/rules
+
+spmat.o: 
+fd.o: geo2d.o spmat.o
+test.o: fd.o
+test: ${OBJ} fd.o geo2d.o spmat.o
+	-${FLINKER} -o test $^ ${PETSC_SYS_LIB}	
+
+
+#
+
+else
 # List of executables
-PROGRAMS = scratch main
+PROGRAMS = scratch
 
 all: $(PROGRAMS)
 
@@ -31,17 +54,11 @@ all: $(PROGRAMS)
 geo2d.o: 
 spmat.o:
 fd.o: geo2d.o spmat.o
-coarsetools.o: geo2d.o spmat.o
 scratch.o: fd.o
 scratch: fd.o geo2d.o spmat.o
 
-main.o: fd.o
-main: fd.o geo2d.o spmat.o
-
-test1.o: fd.o coarsetools.o
-test1: fd.o geo2d.o spmat.o coarsetools.o
-
 # Building the PROGRAMS; I don't know for what '$@' stands.
+# '$^' name of all prerequists 
 %: %.o
 	$(FC) $(FCFLAGS) -o $@ $^
 # Building libraries and modules
@@ -57,3 +74,6 @@ veryclean:
 backup:
 	mkdir -p backup
 	cp makefile *.f90 *.sh backup
+
+endif
+
